@@ -6,6 +6,12 @@ import {
   Button,
   StyleSheet,
 } from 'react-native';
+import {
+  Pusher,
+  PusherMember,
+  PusherChannel,
+  PusherEvent,
+} from '@pusher/pusher-websocket-react-native';
 
 const App = () => {
   // our custom method
@@ -15,14 +21,42 @@ const App = () => {
   const [id, setId] = useState('Press the button to get The ID');
 
   useEffect(() => {
-    ReactOneCustomMethod.initDefaultConfig();
     ReactOneCustomMethod.bind();
+
+    initPusher();
   }, []);
 
-  const getId = () => {
+  async function initPusher() {
+    const pusher = Pusher.getInstance();
+
+    await pusher.init({
+      apiKey: 'a562f1e7112d80b3ff1a',
+      cluster: 'ap1',
+    });
+
+    await pusher.connect();
+    await pusher.subscribe({
+      channelName: 'my-channel',
+      onEvent: event => {
+        // console.log(`Event received: ${event}`);
+
+        let pusherData = event?.data;
+
+        getId(pusherData);
+        ReactOneCustomMethod.show(`${event?.data}`, ReactOneCustomMethod.SHORT);
+      },
+    });
+  }
+
+  const getId = printerData => {
+    console.log('PrinterData', printerData);
     ReactOneCustomMethod.register(true);
 
-    ReactOneCustomMethod.startPrint('HI ITS ME');
+    // let data = JSON.stringify(printerData);
+
+    // sale[{ title:'hi',amount:'1000MMK' }}]
+    ReactOneCustomMethod.startPrint(printerData);
+    // ReactOneCustomMethod.startPrint('KO SOE MOE AUNG');
     // ReactOneCustomMethod.getPhoneID()
     //   .then(res => {
     //     setId('ID: ' + res);

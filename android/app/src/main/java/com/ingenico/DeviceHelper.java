@@ -90,7 +90,7 @@ import com.usdk.apiservice.limited.DeviceServiceLimited;
  * and provides the interface for accessing each device.
  *
  */
-public final class DeviceHelper implements ServiceConnection {
+    public final class DeviceHelper implements ServiceConnection {
     private static final String TAG = "DeviceHelper";
     // 最大重绑定次数
     private static final int MAX_RETRY_COUNT = 3;

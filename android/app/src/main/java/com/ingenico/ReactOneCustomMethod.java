@@ -1,12 +1,12 @@
 package com.ingenico;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.os.Build;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Bundle;
 import android.os.RemoteException;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -15,18 +15,17 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactMethod;
-import com.usdk.apiservice.aidl.constants.RFDeviceName;
-import com.usdk.apiservice.aidl.pinpad.DeviceName;
-import com.usdk.apiservice.aidl.printer.AlignMode;
-import com.usdk.apiservice.aidl.printer.ECLevel;
-import com.usdk.apiservice.aidl.printer.FactorMode;
-import com.usdk.apiservice.aidl.printer.OnPrintListener;
-import com.usdk.apiservice.aidl.printer.PrintFormat;
 import com.usdk.apiservice.aidl.printer.PrinterError;
-import com.usdk.apiservice.aidl.printer.UPrinter;
+import com.usdk.apiservice.aidl.vectorprinter.Alignment;
+import com.usdk.apiservice.aidl.vectorprinter.OnPrintListener;
+import com.usdk.apiservice.aidl.vectorprinter.TextSize;
+import com.usdk.apiservice.aidl.vectorprinter.UVectorPrinter;
+import com.usdk.apiservice.aidl.vectorprinter.VectorPrinterData;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,10 +36,7 @@ public class ReactOneCustomMethod extends ReactContextBaseJavaModule {
     private static final String DURATION_LONG_KEY = "LONG";
 
     private DeviceHelper serviceConnection;
-    private UPrinter printer;
-
-    public static String PINPAD_DEVICE_NAME = DeviceName.IPP;
-    public static String RF_DEVICE_NAME = RFDeviceName.INNER;
+    private UVectorPrinter vectorPrinter;
 
     ReactOneCustomMethod(ReactApplicationContext context) {
         super(context);
@@ -52,6 +48,7 @@ public class ReactOneCustomMethod extends ReactContextBaseJavaModule {
     public String getName() {
         return "ReactOneCustomMethod";
     }
+
 
     @Override
     public Map<String, Object> getConstants() {
@@ -76,18 +73,6 @@ public class ReactOneCustomMethod extends ReactContextBaseJavaModule {
         Toast.makeText(getReactApplicationContext(), message, duration).show();
     }
 
-   
-
-    @ReactMethod
-    public void initDefaultConfig() {
-        if (Build.MODEL.startsWith("DX8000")) {
-            PINPAD_DEVICE_NAME = DeviceName.COM_EPP;
-            RF_DEVICE_NAME = RFDeviceName.EXTERNAL;
-        } else {
-            PINPAD_DEVICE_NAME = DeviceName.IPP;
-            RF_DEVICE_NAME = RFDeviceName.INNER;
-        }
-    }
 
     @ReactMethod
     public void bind(){
@@ -100,18 +85,17 @@ public class ReactOneCustomMethod extends ReactContextBaseJavaModule {
     public void register(boolean module) {
         try {
             serviceConnection.register(module);
-            printer = serviceConnection.getPrinter();
+            vectorPrinter = serviceConnection.getVectorPrinter();
             getStatus();
         } catch (IllegalStateException e) {
 
         }
     }
 
-    @ReactMethod
     public void getStatus() {
         try {
-            Log.d("Printer", String.valueOf(printer.getStatus()));
-            int status = printer.getStatus();
+            Log.d("Printer", String.valueOf(vectorPrinter.getStatus()));
+            int status = vectorPrinter.getStatus();
             if (status != PrinterError.SUCCESS) {
                 Log.d("Printer","status not normal");
                 return;
@@ -125,56 +109,106 @@ public class ReactOneCustomMethod extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void startPrint(String printData) {
+    public void startPrint(String printData) throws RemoteException, JSONException {
+
+        final long startTime = System.currentTimeMillis();
+
+        JSONObject data = new JSONObject(printData);
+
+        String title = data.get("title").toString();
+        // String amount = data.get("amount").toString();   
+
         try {
-
-//          printer.setPrintFormat();
-            Log.d("Printer", String.valueOf(printer.getValidWidth()));
-            Log.d("Printer","i start print");
-            printer.addText(AlignMode.CENTER, printData);
-//
-//            printer.addQrCode(AlignMode.CENTER, 240, ECLevel.ECLEVEL_H, "www.landicorp.com");
-//            printer.addBarCode(AlignMode.CENTER, 2, 48,  "1234567");
-//
-//            printer.setPrintFormat(PrintFormat.FORMAT_FONTMODE, PrintFormat.VALUE_FONTMODE_BOLDLEVEL2);
-//            printer.addText(AlignMode.LEFT, ">>>>>>> addBmpImage bold2");
-            byte[] image = readAssetsFile(getReactApplicationContext(), "jin.png");
-            printer.addBmpImage(AlignMode.CENTER, FactorMode.BMP1X1, image);
-            printer.startPrint(new OnPrintListener.Stub() {
-                @Override
-                public void onFinish() throws RemoteException {
-                    printer.autoCutPaper();
-                }
-
-                @Override
-                public void onError(int i) throws RemoteException {
-
-                }
-            });
-        } catch (Exception e) {
-
-        }
-    }
-
-    private static byte[] readAssetsFile(Context ctx, String fileName) {
-        InputStream input = null;
-        try {
-            input = ctx.getAssets().open(fileName);
-            byte[] buffer = new byte[input.available()];
-            input.read(buffer);
-            return buffer;
+            Bitmap bitmap = BitmapFactory.decodeStream(getReactApplicationContext().getAssets().open("uab.png"));
+            vectorPrinter.addImage(null, bitmap);
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
-        } finally {
-            if (input != null) {
-                try {
-                    input.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
+
+        addTitle("uab_Production Testing (1)\n");
+        addTitle("Ingenico\n");
+        addTitle("Time City, Yangon\n");
+        addTitle("Kamaryut Township\n");
+        addTitle(title);
+        // addTitle("Yangon, Myanmar\n");
+        Dash("------------------------------------------------------");
+
+        addContent("TID:40000040","62445******5609",null,null,null);
+        addContent("HOST: MPU Host","NII:109",null,null,null);
+        addContent("DEC 27,2022","14:33:24",null,null,null);
+        addContent("INVOICE NO:","000027",null,null,null);
+        Dash("------------------------------------------------------");
+        addTitle("SALE\n");
+        addContent("MPU-UPI","62445******5609",null,null,null);
+        addContent("EXP DATE","**/**",null,null,null);
+        addContent("ENTRY TYPE","CHIP",null,null,null);
+        addContent("CARD NAME","JN",null,null,null);
+        addContent("APP CODE","177351",null,null,null);
+        addContent("REF","136331424360",null,null,null);
+        addContent("AID","A000004820000001",2,4,null);
+
+        Dash("------------------------------------------------------");
+
+        addContent("AMOUNT","MMK 100\n",null,null,true);
+
+        Dash("------------------------------------------------------");
+
+   
+        vectorPrinter.feedPix(250);
+        vectorPrinter.startPrint(new OnPrintListener.Stub() {
+            @Override
+            public void onFinish() throws RemoteException {
+                Log.d("Printer", (String.valueOf(System.currentTimeMillis() - startTime)));
+                
+            }
+
+            @Override
+            public void onStart() throws RemoteException {
+                Log.d("Printer","I am starting to print");
+            }
+
+            @Override
+            public void onError(int i, String s) throws RemoteException {
+
+            }
+        });
     }
+
+    public void addContent(String col1, String col2, Integer col1Width,Integer col2Width,Boolean bold) throws RemoteException{
+
+
+      int[] width = col1Width != null ? new int[]{col1Width, col2Width}: new int[]{8,8};
+      Boolean Bold = bold != null ? bold : false;
+
+      // int[] weights  = {8,8}
+        int[] weights = width;
+        int[] aligns = {Alignment.NORMAL, Alignment.OPPOSITE};
+
+        Bundle textContent = new Bundle();
+        textContent.putBoolean(VectorPrinterData.BOLD, Bold);
+        textContent.putInt(VectorPrinterData.TEXT_SIZE,TextSize.NORMAL);
+        textContent.putInt(VectorPrinterData.FONT_SIZE,22);
+
+        vectorPrinter.addTextColumns(textContent,
+                new String[]{col1,col2}, weights, aligns);
+    }
+
+    public void Dash(String dash) throws RemoteException{
+        Bundle DashFormat = new Bundle();
+        DashFormat.putInt(VectorPrinterData.ALIGNMENT, Alignment.CENTER);
+        DashFormat.putInt(VectorPrinterData.TEXT_SIZE, TextSize.NORMAL);
+        vectorPrinter.addText(DashFormat,dash);
+    }
+
+    public void addTitle(String text) throws RemoteException{
+        Bundle textTitle = new Bundle();
+        textTitle.putInt(VectorPrinterData.ALIGNMENT, Alignment.CENTER);
+        textTitle.putInt(VectorPrinterData.TEXT_SIZE, TextSize.NORMAL);
+        vectorPrinter.addText(textTitle, text);
+    }
+
+
+
+
 
 }
