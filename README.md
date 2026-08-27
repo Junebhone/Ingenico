@@ -73,7 +73,7 @@ yarn test         # Jest
 
 Built in 2022 and **archived as portfolio work** — it is not maintained.
 
-Two things I'd do differently today: the Pusher credentials in `App.js` are hardcoded and
-belong in native build config (the Pusher *key* is a public client-side identifier, not a
-secret, but it shouldn't be in source), and `node_modules/` was committed to the repository
-early on.
+One thing I'd do differently today: the Pusher connection config in `App.js` is hardcoded and
+belongs in build config. (The Pusher *key* is a public client-side identifier rather than a
+secret — the app secret never touches the device — but it still shouldn't be inlined in
+source.)
